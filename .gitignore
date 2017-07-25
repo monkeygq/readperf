@@ -1,0 +1,7 @@
+# ignore compile files and csv
+readperf/decode/*.o
+readperf/perffile/*.o
+readperf/util/*.o
+readperf/*.o
+readperf/readperf
+readperf/*.csv
