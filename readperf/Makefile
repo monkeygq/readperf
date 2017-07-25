@@ -19,7 +19,7 @@ OBJS= \
 	decode/addr2line.o
 
 readperf: $(OBJS)
-	$(CC) $^ -o $@
+	g++ $^ -o $@
 
 doc:
 	mkdir -p ../generated/
@@ -27,7 +27,7 @@ doc:
 
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(OBJFLAGS) $< -o $@
+	g++ $(CFLAGS) $(OBJFLAGS) $< -o $@
 
 clean:
 	rm -f $(OBJS)
