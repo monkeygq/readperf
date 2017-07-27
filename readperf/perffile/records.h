@@ -65,6 +65,13 @@ extern "C" {
     };
 
     typedef TREE_HEAD(_OrderTree, record_t) record_order_tree_t;
+    /*
+     * struct _OrderTree {
+     *     struct record_t *th_root;
+     *     int (*th_cmp)(struct record_t *lhs, struct record_t *rhs);
+     * }
+     *
+     */
 
     record_order_tree_t init_record_order();
     bool add_record_order( record_order_tree_t *tree, struct record_t *rec );

@@ -49,7 +49,7 @@ int main( int argc, char **argv ) {
     }
     
     
-    if( !read_perf_file( fd ) ){
+    if( !read_perf_file( fd ) ){ /* perf.data's fd */
         print_last_error();
         return -1;
     }

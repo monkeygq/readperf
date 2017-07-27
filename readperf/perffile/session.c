@@ -28,24 +28,50 @@ static int i_fd = -1;
 
 bool readn( int fd, void *buf, size_t count )
 {
-  while( count > 0 ){
-    int ret = read( fd, buf, count );
-    trysys( ret >= 0 );
-    if( ret == 0 ){
-        set_last_error( ERR_FILE_END_TO_EARLY, NULL );
-        return false;
-    } else {
-        count = count - ret;
-        buf   = ((char*)buf) + ret;
+    /*
+     * In multiple cases, the number of bytes read is less than the number of bytes required to read,
+     * so use the loop until you read the required number of bytes.
+     *
+     * If an error occurred before reading the required number of bytes,
+     * return false.
+     *
+     */
+    while( count > 0 ){
+        int ret = read( fd, buf, count );
+        trysys( ret >= 0 );
+        if( ret == 0 ){
+            set_last_error( ERR_FILE_END_TO_EARLY, NULL );
+            return false;
+        } else {
+            count = count - ret;
+            buf   = ((char*)buf) + ret;
+        }
     }
-  }
-  return true;
+    return true;
 }
 
+/*
+ * idlink save the correspondence between perf_event_attr and id
+ * linkmemory is idlink's max length
+ * linkcount is idlink's index
+ * if the array of idlink is full, then expand max length to linkmemory *= 2
+ */
 static bool add_link( u64 id, struct event_type_entry *entry ){
     if( linkmemory == 0 ){
         linkmemory  = 4;
         idlink  = (struct event_id_link *)malloc( sizeof(*idlink) * linkmemory );
+        /*
+         * struct event_id_link {
+         *     u64 id;
+         *     struct event_type_entry *entry;
+         * }
+         *
+         * struct event_type_entry {
+         *     struct perf_event_attr attr;
+         *     char name[MAX_EVENT_NAME];
+         * }
+         *
+         */
         trysys( idlink != NULL );
     } else if( linkmemory == linkcount ) {
         struct event_id_link *old = idlink;
@@ -77,25 +103,31 @@ static bool add_link( u64 id, struct event_type_entry *entry ){
  */
 static bool readAttr() {
     struct perf_file_attr f_attr;
-    
+
     if( (fheader.attrs.size % sizeof( struct perf_file_attr )) != 0 ){
         char buf[256];
         snprintf( buf, sizeof(buf), "problem with attrs size: %llu %lu", fheader.attrs.size, sizeof( struct perf_file_attr ) );
         set_last_error( ERR_SIZE_MISMATCH, strdup(buf) );
         return false;
     }
-    eventAttrCount = fheader.attrs.size / sizeof( struct perf_file_attr );
+    eventAttrCount = fheader.attrs.size / sizeof( struct perf_file_attr ); /* the count of perf_file_attr */
     eventAttr = (struct event_type_entry *)malloc( sizeof( *eventAttr ) * eventAttrCount );
-    
+    /*
+     * struct event_type_entry {
+     *     struct perf_event_attr attr;
+     *     char name[MAX_EVENT_NAME];
+     * }
+     */
+
     trysys( lseek( i_fd, fheader.attrs.offset, SEEK_SET ) >= 0 );
-    
+
     /* special case if there is only one event
      * events don't have an ID tag, use default value
      */
     if( eventAttrCount == 1 ){
         try( add_link( -1ULL, &eventAttr[0] ) );
     }
-    
+
     off_t pos = lseek( i_fd, 0, SEEK_CUR );
     unsigned int i;
     for( i = 0; i < eventAttrCount; i++ ){
@@ -103,15 +135,21 @@ static bool readAttr() {
         try( readn( i_fd, &f_attr, sizeof(f_attr) ) );
         pos = lseek( i_fd, 0, SEEK_CUR );
         trysys( pos >= 0 );
-        
+
         trymsg( f_attr.attr.size == sizeof( f_attr.attr ), ERR_SIZE_MISMATCH, "f_attr.config.size" );
-        
+
         eventAttr[i].attr = f_attr.attr;
-        
+
         if( !f_attr.attr.sample_id_all ){
+            /* perf_event_attr.sample_type must set sample_id_all */
             set_last_error( ERR_NOT_YET_DEFINED, "need attr.sample_id_all" );
             return false;
         }
+        /*
+         * We have a number of perf_file_attr(perf_event_attr),
+         * sample_type is sampling format,
+         * every perf_event_attr->sample_type must be the same.
+         */
         if( i == 0 ){
             samplingType = f_attr.attr.sample_type;
         } else {
@@ -120,10 +158,10 @@ static bool readAttr() {
                 return false;
             }
         }
-        
+
         u64   f_id;
         unsigned int idcount = f_attr.ids.size / sizeof(f_id);
-        
+
         if( idcount > 0 ){
             trysys( lseek( i_fd, f_attr.ids.offset, SEEK_SET ) >= 0 );
             unsigned int k;
@@ -133,7 +171,7 @@ static bool readAttr() {
             }
         }
     }
-    
+
     return true;
 }
 
@@ -148,22 +186,24 @@ static bool readAttr() {
 static bool readTypes() {
     unsigned int traceInfoCount = 0;
     struct perf_trace_event_type *traceInfo = NULL;
-    
+
     if( (fheader.event_types.size % sizeof( struct perf_trace_event_type )) != 0 ){
         char buf[256];
         snprintf( buf, sizeof(buf), "problem with event_types size: %llu %lu\n", fheader.event_types.size, sizeof( struct perf_file_header ) );
         set_last_error( ERR_SIZE_MISMATCH, strdup(buf) );
         return false;
     }
+
+    /* the count of perf_trace_event_type */
     traceInfoCount = fheader.event_types.size / sizeof( struct perf_trace_event_type );
-    
+
     trysys( lseek( i_fd, fheader.event_types.offset, SEEK_SET ) >= 0 );
-    
+
     traceInfo = (struct perf_trace_event_type *)malloc( fheader.event_types.size );
     trysys( traceInfo != NULL );
-    
+
     try( readn( i_fd, traceInfo, fheader.event_types.size ) );
-    
+
     unsigned int i, k;
     for( i = 0; i < eventAttrCount; i++ ){
         for( k = 0; k < traceInfoCount; k++ ){
@@ -220,9 +260,9 @@ bool skip_event_data( struct perf_event_header* header ){
 bool start_session( int fd ){
     i_fd = fd;
     try( readn( i_fd, &fheader, sizeof(fheader) ) );
-    
+
     const char MAGIC[8] = { 'P', 'E', 'R', 'F', 'F', 'I', 'L', 'E' };
-    
+
     if( fheader.magic != *((u64 *)MAGIC) ){
         set_last_error( ERR_NO_PERF_FILE, NULL );
         return false;
@@ -232,10 +272,21 @@ bool start_session( int fd ){
         set_last_error( ERR_SIZE_MISMATCH, "maybe needed swap but not implemented" );
         return false;
     };
-    
+
+    /*
+     * readAttr() do: 
+     * assign perf_event_attr to eventAttr[i].attr of eventAttr array
+     * the relation of perf_event_attr and id saves in idlink array
+     * set samplingType
+     */
     try( readAttr() );
+    /*
+     * readTypes() do:
+     * if perf_trace_event_type.event_id == eventAttr[i].attr.config,
+     * assign perf_trace_event_type.name to eventAttr[i].name
+     */
     try( readTypes() );
-    
+
     trysys( lseek( i_fd, fheader.data.offset, SEEK_SET ) >= 0 );
     return true;
 }
