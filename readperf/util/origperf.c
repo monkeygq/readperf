@@ -5,13 +5,30 @@
 #include  "origperf.h"
 #include  <stdio.h>
 
+/*
+ * sample_id_all
+ *     If set, then TID, TIME, ID, STREAM_ID, and CPU can 
+ *     additionally be included in non-PERF_RECORD_SAMPLEs
+ *
+ * The layout is described by this pseudo-structure:
+ *  struct sample_id {
+ *      { u32 pid, tid; }   * if PERF_SAMPLE_TID set *
+ *      { u64 time;     }   * if PERF_SAMPLE_TIME set *
+ *      { u64 id;       }   * if PERF_SAMPLE_ID set *
+ *      { u64 stream_id;}   * if PERF_SAMPLE_STREAM_ID set  *
+ *      { u32 cpu, res; }   * if PERF_SAMPLE_CPU set *
+ *      { u64 id;       }   * if PERF_SAMPLE_IDENTIFIER set *
+ *  };
+ */
 static int perf_event__parse_id_sample(const union perf_event *event, u64 type, struct perf_sample *sample)
 {
 	const u64 *array = event->sample.array;
 
+    /* array points to the last u64 of sample_id */
 	array += ((event->header.size -
 		   sizeof(event->header)) / sizeof(u64)) - 1;
 
+    /* Assign from backward to forward */
 	if (type & PERF_SAMPLE_CPU) {
 		u32 *p = (u32 *)array;
 		sample->cpu = *p;
@@ -79,7 +96,7 @@ int perf_event__parse_sample(const union perf_event *event, u64 type, bool sampl
 		array++;
 	}
 
-	data->id = -1ULL;
+	data->id = -1ULL; /* useful? */
 	if (type & PERF_SAMPLE_ID) {
 		data->id = *array;
 		array++;
@@ -108,7 +125,7 @@ int perf_event__parse_sample(const union perf_event *event, u64 type, bool sampl
 
 	if (type & PERF_SAMPLE_CALLCHAIN) {
 		data->callchain = (struct ip_callchain *)array;
-		array += 1 + data->callchain->nr;
+		array += 1 + data->callchain->nr; /* u64 nr + u64 * nr */
 	}
 
 	if (type & PERF_SAMPLE_RAW) {

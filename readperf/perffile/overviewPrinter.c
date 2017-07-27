@@ -71,7 +71,7 @@ bool overviewInit( FILE* overview ){
 }
 
 bool log_type( __u32 type ){
-    if( (type > 0) && (type < PERF_RECORD_MAX) ){
+    if( (type > 0) && (type < PERF_RECORD_MAX) ){ /* PERF_RECORD_MAX = 16 */
         count[type]++;
     } else {
         count[0]++;

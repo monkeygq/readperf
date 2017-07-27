@@ -240,6 +240,12 @@ bool next_event_header( struct perf_event_header* header ){
 };
 
 bool read_event_data( union perf_event *evt ){
+    /*
+     * evt->header.size = size of the record data(inclusive header)
+     * evt is a instance of union perf_event
+     * sizeof(*evt) is the max sizeof(struct) of union
+     * so <= must be true
+     */
     try( evt->header.size <= sizeof(*evt) );
     try( readn( i_fd,  &(evt->sample.array[0]), evt->header.size-sizeof(evt->header) ) );
     return true;

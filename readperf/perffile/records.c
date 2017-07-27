@@ -11,6 +11,16 @@
 TREE_DEFINE(record_t, RECORD_TREE_LINK);
 
 bool add_record_order( record_order_tree_t *tree, struct record_t *rec ){
+    /*
+     * typedef
+     *
+     * struct _OrderTree {
+     *     struct record_t *th_root;
+     *     int (*th_cmp)(struct record_t *lhs, struct record_t *rhs);
+     * }
+     *
+     * record_order_tree_t
+     */
     TREE_INSERT( tree, record_t, RECORD_TREE_LINK, rec);
     return true;
 };

@@ -15,6 +15,26 @@ record_order_tree_t orderTree;
 
 static struct record_t* create_mmap_msg( struct mmap_event *evt ){
     struct record_mmap* rec = (struct record_mmap*)malloc( sizeof(*rec) );
+    /*
+     *struct record_mmap {
+     *    struct record_t header;
+     *    u64 start;
+     *    u64 len;
+     *    u64 pgoff;
+     *    char filename[PATH_MAX];
+     *};
+     *
+     *struct mmap_event {
+     *    struct perf_event_header header;
+	 *    u32 pid, tid;
+	 *    u64 start;
+	 *    u64 len;
+	 *    u64 pgoff;
+	 *    char filename[PATH_MAX];
+     *};
+     *
+     * assign mmap_event to record_mmap
+     */
     if( rec != NULL ){
         rec->header.pid = evt->pid;
         rec->header.tid = evt->tid;
@@ -72,7 +92,12 @@ static bool readEvents() {
     u64 ev_nr = 0;
     while( has_more_events() ){
         union perf_event evt;
-        try( next_event_header( &evt.header ) );
+        /* read perf_event_header, assign to evt.header */
+        try( next_event_header( &evt.header ) ); 
+        /*
+         * array count records the number of data type
+         * count[PERF_RECORD_MMAP] means the number of PERF_RECORD_MMAP data
+         */
         log_type( evt.header.type );
         switch( evt.header.type ){
             case PERF_RECORD_MMAP:
@@ -80,11 +105,31 @@ static bool readEvents() {
             case PERF_RECORD_FORK:
             case PERF_RECORD_EXIT:
             case PERF_RECORD_SAMPLE: {
-                try( read_event_data( &evt ) );
+                try( read_event_data( &evt ) );/* assign data to evt.sample.array */
                 struct perf_sample  sample;
+                /*
+                 * first: parse perf_event
+                 * second: assign perf_sample
+                 *
+                 * if !PERF_RECORD_SAMPLE
+                 *     invoke perf_event__parse_sample
+                 * else
+                 *     invoke perf_event__parse_id_sample in perf_event__parse_sample
+                 */
                 trymsg( perf_event__parse_sample( &evt, get_sampling_type(), true, &sample ) >= 0, ERR_NOT_YET_DEFINED, "readEvents:perf_event__parse_sample" );
                 
                 struct record_t *rec;
+                /*
+                 *struct record_t {
+                 *    TREE_ENTRY(record_t)      RECORD_TREE_LINK;
+                 *    u32 pid, tid;
+                 *    u32 cpu;
+                 *    u64 time;
+                 *    u64 nr;
+                 *    u64 id;
+                 *    enum perf_event_type type;
+                 *};
+                 */
                 
                 switch( evt.header.type ){
                     case PERF_RECORD_MMAP: rec = create_mmap_msg( &evt.mmap ); break;
