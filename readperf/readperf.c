@@ -69,16 +69,25 @@ int main( int argc, char **argv ) {
       return -1;
     }
     
-    processes_file  = fopen( PROCESSES_LOG_NAME, "w+" );
+    /* "processes.csv" */
+    processes_file  = fopen( PROCESSES_LOG_NAME, "w+" ); 
+
+    /* add header of "processes.csv" */
     print_process_init( processes_file );
+
+    /* overview.csv */
     overview_file = fopen( OVERVIEW_LOG_NAME, "w+" );
+
+    /* add header of "overview.csv" */
     overviewInit( overview_file );
-    buildstat( get_record_order_tree() );
+    /* analysis data */
+    buildstat( get_record_order_tree() );/* TODO: read */
     fclose( processes_file );
     
     fclose( overview_file );
     
-    FILE    *stat = fopen( STAT_LOG_NAME, "w+" );
+    FILE    *stat = fopen( STAT_LOG_NAME, "w+" ); /* stat.csv */
+    /* print the number of different data type */
     print_type_summary( stat );
     fclose( stat );
     

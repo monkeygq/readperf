@@ -228,6 +228,26 @@ static void handleRecord(struct record_t *proc, void *data){
  * the period and sample number for each source function.
  */
 bool buildstat( record_order_tree_t *tree ){
+    /*
+     * struct process {
+     *     TREE_ENTRY(process)      RECORD_TREE_LINK;
+     *     u32 pid;
+     *     u64 fork_time;
+     *     u64 exit_time;
+     *     u64 samples;
+     *     u64 period;
+     *     u64 vdso;
+	 *	   char comm[16];
+     *     struct rmmap *mmaps;
+     * }
+     *
+     * typedef
+     * struct _RecordTree {
+     *     struct process *th_root;
+     *     int (*th_cmp)(struct process *lhs, struct process *rhs);
+     * }
+     * process_tree_t
+     */
     recTree = init_processes();
     iterate_order( tree, handleRecord, NULL );
     print_processes( &recTree );

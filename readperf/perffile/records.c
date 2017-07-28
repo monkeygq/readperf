@@ -41,7 +41,7 @@ record_order_tree_t init_record_order(){
 }
 
 void iterate_order( record_order_tree_t *tree, void (*callback)(struct record_t *proc, void *data), void *data ){
-    TREE_FORWARD_APPLY( tree, record_t, RECORD_TREE_LINK, callback, data);
+    TREE_FORWARD_APPLY( tree, record_t, RECORD_TREE_LINK, callback, data); /* Inorder Traversal */
 };
 
 
