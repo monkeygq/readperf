@@ -25,6 +25,21 @@ static u64 samplingType = 0;
 
 static struct perf_file_header fheader;
 static int i_fd = -1;
+/* add by hougq*/
+static char *perf_hw_id2name[11] = {
+    "PERF_COUNT_HW_CPU_CYCLES",
+    "PERF_COUNT_HW_INSTRUCTIONS",
+    "PERF_COUNT_HW_CACHE_REFERENCES",
+    "PERF_COUNT_HW_CACHE_MISSES",
+    "PERF_COUNT_HW_BRANCH_INSTRUCTIONS",
+    "PERF_COUNT_HW_BRANCH_MISSES",
+    "PERF_COUNT_HW_BUS_CYCLES",
+    "PERF_COUNT_HW_STALLED_CYCLES_FRONTEND",
+    "PERF_COUNT_HW_STALLED_CYCLES_BACKEND",
+    "PERF_COUNT_HW_REF_CPU_CYCLES",
+    "PERF_COUNT_HW_MAX"
+};
+/* end */
 
 bool readn( int fd, void *buf, size_t count )
 {
@@ -184,8 +199,6 @@ static bool readAttr() {
  * assigned to the @link perf_file_attr @endlink instance.
  */
 static bool readTypes() {
-    unsigned int traceInfoCount = 0;
-    struct perf_trace_event_type *traceInfo = NULL;
 
     if( (fheader.event_types.size % sizeof( struct perf_trace_event_type )) != 0 ){
         char buf[256];
@@ -194,25 +207,23 @@ static bool readTypes() {
         return false;
     }
 
-    /* the count of perf_trace_event_type */
-    traceInfoCount = fheader.event_types.size / sizeof( struct perf_trace_event_type );
-
     trysys( lseek( i_fd, fheader.event_types.offset, SEEK_SET ) >= 0 );
 
-    traceInfo = (struct perf_trace_event_type *)malloc( fheader.event_types.size );
-    trysys( traceInfo != NULL );
-
-    try( readn( i_fd, traceInfo, fheader.event_types.size ) );
-
     unsigned int i, k;
+    /* add by hougq*/
+    printf("eventAttrCount = %d\n", eventAttrCount);
+    for(i = 0; i < eventAttrCount; i++) {
+        printf("eventAttr[%d].attr.config = %llu\n", i, eventAttr[i].attr.config);
+    }
+    /* end */
     for( i = 0; i < eventAttrCount; i++ ){
-        for( k = 0; k < traceInfoCount; k++ ){
-            if( eventAttr[i].attr.config == traceInfo[k].event_id ){
-                memcpy( &eventAttr[i].name, traceInfo[k].name, sizeof(eventAttr[i].name) );
-                break;
-            }
+        if(eventAttr[i].attr.config < 10) {
+            k = eventAttr[i].attr.config;
+            memcpy(&eventAttr[i].name, perf_hw_id2name[k], strlen(perf_hw_id2name[k]));
+            printf("eventAttr[%d].name = %s\n", i, eventAttr[i].name);
+            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         }
-        if( k == traceInfoCount ){
+        else {
             char buf[256];
             snprintf( buf, sizeof(buf), "%llu", eventAttr[i].attr.config );
             set_last_error( ERR_TRACE_INFO_NOT_FOUND_FOR_CONFIG, strdup(buf) );
@@ -267,7 +278,7 @@ bool start_session( int fd ){
     i_fd = fd;
     try( readn( i_fd, &fheader, sizeof(fheader) ) );
 
-    const char MAGIC[8] = { 'P', 'E', 'R', 'F', 'F', 'I', 'L', 'E' };
+    const char MAGIC[8] = { 'P', 'E', 'R', 'F', 'I', 'L', 'E', '2' };
 
     if( fheader.magic != *((u64 *)MAGIC) ){
         set_last_error( ERR_NO_PERF_FILE, NULL );
