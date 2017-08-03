@@ -113,6 +113,32 @@ static bool decodeMmap( struct record_mmap *evt ) {
     return true;
 }
 
+static bool decodeMmap2( struct record_mmap2 *evt ) {
+    log_overview_siii( evt->header.nr, PERF_RECORD_MMAP2, evt->header.pid, evt->header.tid, evt->header.time, evt->filename, evt->start, evt->len, evt->pgoff );
+    
+    struct process* proc = find_process( &recTree, evt->header.pid );
+    if( proc == NULL ){
+        trymsg( evt->header.time == 0, ERR_NOT_YET_DEFINED, __func__ );
+        proc = create_process( &recTree, evt->header.pid );
+        try( proc != NULL );
+    }
+    
+    if( memcmp( evt->filename, "[vdso]", 6 ) == 0 ){
+        trymsg( proc->vdso == 0, ERR_NOT_YET_DEFINED, "2 vdso mmap records found" );
+        proc->vdso = evt->pgoff;
+    } else {
+        struct rmmap *old = proc->mmaps;
+        proc->mmaps = (struct rmmap *)malloc( sizeof(*proc->mmaps) );
+        trysys( proc->mmaps != NULL );
+        proc->mmaps->next = old;
+        proc->mmaps->start = evt->start;
+        proc->mmaps->end = evt->start + evt->len - 1;
+        proc->mmaps->pgoff = evt->pgoff;
+        memcpy( proc->mmaps->filename, evt->filename, sizeof(proc->mmaps->filename) );
+    }
+    
+    return true;
+}
 /**
  * Provides the application name for an process. If the corresponding process is
  * not found we assume that it was not yet created. This is the case for 
@@ -195,6 +221,10 @@ static void handleRecord(struct record_t *proc, void *data){
         }
         case PERF_RECORD_MMAP:{
             success = decodeMmap( (struct record_mmap*)proc );
+            break;
+        }
+        case PERF_RECORD_MMAP2:{
+            success = decodeMmap2( (struct record_mmap2*)proc );
             break;
         }
         case PERF_RECORD_FORK:{

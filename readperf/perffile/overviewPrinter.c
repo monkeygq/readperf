@@ -10,7 +10,7 @@
 #define SEP ","
 
 static FILE *overview_file = NULL;
-static const char *NAMES[] = { NULL, "MMAP", "LOST", "COMM", "EXIT", "THROTTLE", "UNTHROTTLE", "FORK", "READ", "SAMPLE" };
+static const char *NAMES[] = { NULL, "MMAP", "LOST", "COMM", "EXIT", "THROTTLE", "UNTHROTTLE", "FORK", "READ", "SAMPLE", "MMAP2", "AUX", "ITRACE_START", "LOST_SAMPLES", "SWITCH", "SWITCH_CPU_WIDE" };
 static int count[PERF_RECORD_MAX] = { 0 };
 
 static void log_overview_header(){

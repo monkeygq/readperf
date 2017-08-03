@@ -42,6 +42,21 @@ struct mmap_event {
 	char filename[PATH_MAX];
 };
 
+struct mmap2_event {
+    struct perf_event_header header;
+    u32 pid, tid;
+    u64 start;
+    u64 len;
+    u64 pgoff;
+    u32 maj;
+    u32 min;
+    u64 ino;
+    u64 ino_generation;
+    u32 prot;
+    u32 flags;
+    char filename[PATH_MAX];
+};
+
 struct comm_event {
 	struct perf_event_header header;
 	u32 pid, tid;
@@ -143,6 +158,7 @@ union perf_event {
 	struct perf_event_header	header;
 	struct ip_event			ip;
 	struct mmap_event		mmap;
+    struct mmap2_event      mmap2;
 	struct comm_event		comm;
 	struct fork_event		fork;
 	struct lost_event		lost;

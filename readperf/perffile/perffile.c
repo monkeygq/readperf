@@ -46,6 +46,19 @@ static struct record_t* create_mmap_msg( struct mmap_event *evt ){
     return &rec->header;
 };
 
+static struct record_t* create_mmap2_msg( struct mmap2_event *evt ){
+    struct record_mmap2* rec = (struct record_mmap2*)malloc( sizeof(*rec) );
+    if( rec != NULL ){
+        rec->header.pid = evt->pid;
+        rec->header.tid = evt->tid;
+        rec->start = evt->start;
+        rec->len = evt->len;
+        rec->pgoff = evt->pgoff;
+        memcpy( rec->filename, evt->filename, sizeof(rec->filename) );
+    }
+    return &rec->header;
+};
+
 static struct record_t* create_comm_msg( struct comm_event *evt ){
     struct record_comm* rec = (struct record_comm*)malloc( sizeof(*rec) );
     if( rec != NULL ){
@@ -100,6 +113,7 @@ static bool readEvents() {
          */
         log_type( evt.header.type );
         switch( evt.header.type ){
+            case PERF_RECORD_MMAP2:
             case PERF_RECORD_MMAP:
             case PERF_RECORD_COMM:
             case PERF_RECORD_FORK:
@@ -132,6 +146,7 @@ static bool readEvents() {
                  */
                 
                 switch( evt.header.type ){
+                    case PERF_RECORD_MMAP2: rec = create_mmap2_msg( &evt.mmap2 ); break;
                     case PERF_RECORD_MMAP: rec = create_mmap_msg( &evt.mmap ); break;
                     case PERF_RECORD_COMM: rec = create_comm_msg( &evt.comm ); break;
                     case PERF_RECORD_FORK: // fall throught

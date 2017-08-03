@@ -47,6 +47,20 @@ extern "C" {
         char filename[PATH_MAX];
     };
 
+    struct record_mmap2 {
+        struct record_t header;
+        u64 start;
+        u64 len;
+        u64 pgoff;
+        u32 maj;
+        u32 min;
+        u64 ino;
+        u64 ino_generation;
+        u32 prot;
+        u32 flags;
+        char filename[PATH_MAX];
+    };
+
     struct record_comm {
         struct record_t header;
         char comm[16];
